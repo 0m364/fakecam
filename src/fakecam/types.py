@@ -6,3 +6,4 @@ class CommandQueueDict(TypedDict):
     background: Optional[str]
     hologram: bool
     mirror: bool
+    loop: bool

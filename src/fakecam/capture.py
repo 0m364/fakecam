@@ -99,7 +99,7 @@ def get_frame(cap: object, scaler: BodypixScaler, ones, dilation, background: ob
 
 
 def start(command_queue: "Queue[CommandQueueDict]" = None, return_queue: "Queue[bool]" = None, camera_input: str = "/dev/video0", camera_output: str = "/dev/video20", background: str = None,
-          use_hologram: bool = False, use_mirror: bool = False, resolution: Tuple[int,int] = None):
+          use_hologram: bool = False, use_mirror: bool = False, resolution: Tuple[int,int] = None, loop: bool = False):
     # setup access to the *real* webcam
     print("Starting capture using device: {camera}".format(camera=camera_input))
     cap = cv2.VideoCapture(camera_input, cv2.CAP_V4L2)
@@ -148,20 +148,20 @@ def start(command_queue: "Queue[CommandQueueDict]" = None, return_queue: "Queue[
         background_scaled = cv2.resize(background_data, (width, height))
 
     first_frame = True
+
+    loop_buffer = []
+    playback_index = 0
+    MAX_LOOP_FRAMES = 150
+
     # frames forever
     while True:
-        frame = get_frame(cap, scaler, ones, dilation, background=background_scaled, use_hologram=use_hologram, height=height, width=width)
-        if frame is None:
-            print("ERROR: could not read from camera!")
-            break
-
-        if use_mirror is True:
-            frame = cv2.flip(frame, 1)
-        # fake webcam expects RGB
-        # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        fake.schedule_frame(frame)
         if command_queue is not None and not command_queue.empty():
             data = command_queue.get(False)
+
+            if "loop" in data and loop != data["loop"]:
+                loop = data["loop"]
+                loop_buffer = []
+                playback_index = 0
 
             if data["background"] is None:
                 background_scaled = None
@@ -174,6 +174,27 @@ def start(command_queue: "Queue[CommandQueueDict]" = None, return_queue: "Queue[
 
             use_hologram = data["hologram"]
             use_mirror = data["mirror"]
+
+        if loop and len(loop_buffer) >= MAX_LOOP_FRAMES:
+            # Playback
+            cap.grab()
+            frame = loop_buffer[playback_index]
+            playback_index = (playback_index + 1) % len(loop_buffer)
+        else:
+            frame = get_frame(cap, scaler, ones, dilation, background=background_scaled, use_hologram=use_hologram, height=height, width=width)
+            if frame is None:
+                print("ERROR: could not read from camera!")
+                break
+
+            if use_mirror is True:
+                frame = cv2.flip(frame, 1)
+
+            if loop:
+                loop_buffer.append(frame.get() if isinstance(frame, cv2.UMat) else frame)
+
+        # fake webcam expects RGB
+        # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        fake.schedule_frame(frame)
 
         if first_frame and return_queue is not None:
             first_frame = False
