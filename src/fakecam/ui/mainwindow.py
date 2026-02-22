@@ -47,6 +47,7 @@ class MainWindow:
     background = None
     use_hologram = False
     use_mirror = False
+    loop = False
 
     def __init__(self):
         self.player = None
@@ -176,6 +177,7 @@ class MainWindow:
                 "onGreenscreenToggled": self.on_greenscreen_toggled,
                 "onHologramToggled": self.on_hologram_toggled,
                 "onMirrorToggled": self.on_mirror_toggled,
+                "onLoopToggled": self.on_loop_toggled,
                 "onStartButtonClicked": self.on_startbutton_clicked,
                 "onDonateButtonClicked": self.on_donatebutton_clicked,
                 "onCameraChanged": self.on_camera_changed,
@@ -243,6 +245,7 @@ class MainWindow:
                 background=self.background,
                 hologram=self.use_hologram,
                 mirror=self.use_mirror,
+                loop=self.loop,
             ))
 
     def on_reset_background(self, widget, *args):
@@ -288,6 +291,10 @@ class MainWindow:
         config.set("main", "mirror", str(self.use_mirror))
         self.update_worker()
 
+    def on_loop_toggled(self, widget, *args):
+        self.loop = widget.get_active()
+        self.update_worker()
+
     def on_startbutton_clicked(self, widget, *args):
         if self.started:
             self.stop()
@@ -308,6 +315,7 @@ class MainWindow:
             "background": self.background,
             "use_hologram": self.use_hologram,
             "use_mirror": self.use_mirror,
+            "loop": self.loop,
             "command_queue": self.command_queue,
             "return_queue": self.return_queue,
             "resolution": self.resolution,
